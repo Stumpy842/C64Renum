@@ -7,6 +7,7 @@ root = true
 charset = utf-8-bom
 dotnet_diagnostic.IDE0051.severity = none
 dotnet_diagnostic.IDE1006.severity = none
+dotnet_diagnostic.SYSLIB1054.severity = none
 
 #### Core EditorConfig Options ####
 

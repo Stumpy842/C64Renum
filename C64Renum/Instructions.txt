@@ -1,0 +1,18 @@
+﻿In C64 BASIC only the first two characters of the name are used to represent the program variable. 
+In the '[old]' column names are shown with the same background color (excepting a white background) 
+if they represent the same variable. In the '[new]' column they are colored [collision] for a name collision, 
+and [mirror] if a safe runtime mirror.
+
+For example, PL1 and PL2, while appearing different in the listing, would actually represent the same variable. 
+Therefore consider changing one or more of the matching names to avoid confusion when editing your program.
+
+NOTE: Variables whith a suffix of '%', '$' or array variables such as A(0) are completely independent entries. 
+HP, HP%, and HP$ can all coexist without conflict. 
+Also, functions declared with DEF FN are independent, as are dummy variables used in the function definition. 
+These variables are marked with [FN] and [DUMMY] respectively.
+
+Rename variables by adding new names in the '[new]' column. Leave the value blank to keep the old variable name. 
+Nonblank cells will replace the old variable name in the refactored output file.
+
+Click Save to process the input file and return to the main window. Click Trim to trim new names to two characters. 
+Click Reset to clear all your edits and remain in the Refactor window. Click Cancel to abandon changes.

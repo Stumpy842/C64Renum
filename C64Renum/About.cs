@@ -1,6 +1,6 @@
 ﻿/*
-C64Renum C64 Basic program renumbering utility
-© Steven J. Stover, 2026
+C64Renum C64 Basic program renumber/refactor utility
+© 2026 Steven J. Stover
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU Affero General Public License as published by the Free Software Foundation, either version 3 
@@ -16,6 +16,7 @@ If not, see <https://www.gnu.org/licenses/>.
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -26,18 +27,23 @@ namespace C64Renum
 {
     public partial class About : Form
     {
+        private const string pageLink = @"https://github.com/Stumpy842/C64Renum";
         private readonly string nl = Environment.NewLine;
+        private readonly string appName;
 
         public About()
         {
             InitializeComponent();
-            Text = $"About {Form1.AppName}";
-            lbTitle.Text = Form1.AppName + " v" + Form1.AppVersion;
-            lbInfo.Text = $"Comodore C64 Basic (prg) renumbering utility{nl}© Steven J. Stover, 2026";
-            lbWhat.Text = $"This program is free software. You may redistribute it and/or modify{nl}" +
+            appName = Form1.AppName;
+            Text = $"About {appName}";
+            lbTitle.Text = $"{appName} v{Form1.AppVersion}";
+            lbInfo.Text = $"Comodore C64 Basic (prg) renumber/refactor utility{nl}© 2026 Steven J. Stover";
+            lbLicense.Text = $"This program is free software. You may redistribute it and/or modify{nl}" +
                 $"it under the terms of the GNU General Public License as published{nl}" +
                 $"by the Free Software Foundation, either version 3 of the License,{nl}" +
                 "or (at your option) any later version.";
+            lbDisclaimer.Text = $"{appName} and its author are not affiliated{nl}with Commodore International Corporation.";
+            lbPageLink.Text = pageLink;
         }
 
         private void About_KeyDown(object sender, KeyEventArgs e)
@@ -56,10 +62,25 @@ namespace C64Renum
 
         private void About_Load(object sender, EventArgs e)
         {
-            lbTitle.Left = (lbTitle.Parent!.Width - lbTitle.Size.Width) / 2;
-            lbInfo.Left = (lbInfo.Parent!.Width - lbInfo.Size.Width) / 2;
-            lbWhat.Left = (lbWhat.Parent!.Width - lbWhat.Size.Width) / 2;
-            btOK.Left = (btOK.Parent!.Width - btOK.Size.Width) / 2;
+            int pWidth = panel1.Width;
+            lbTitle.Left = (pWidth - lbTitle.Size.Width) / 2;
+            lbInfo.Left = (pWidth - lbInfo.Size.Width) / 2;
+            lbLicense.Left = (pWidth - lbLicense.Size.Width) / 2;
+            lbDisclaimer.Left = (pWidth - lbDisclaimer.Size.Width) / 2;
+            lbPageLink.Left = (pWidth - lbPageLink.Size.Width) / 2;
+            btOK.Left = (pWidth - btOK.Size.Width) / 2;
+        }
+
+        private void lbPageLink_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using Process? p = Process.Start(new ProcessStartInfo(pageLink) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Tools.TimedMessage($@"Cannot open page {pageLink}{nl}{ex}", appName);
+            }
         }
     }
 }

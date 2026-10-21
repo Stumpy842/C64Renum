@@ -7,15 +7,30 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>C64Renum.ico</ApplicationIcon>
+    <Title>C64Renum</Title>
+    <Description>Comodore C64 Basic (prg) renumbering utility</Description>
+    <Copyright>2026 Steven J. Stover</Copyright>
+    <PackageProjectUrl>https://github.com/Stumpy842/C64Renum</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Stumpy842/C64Renum</RepositoryUrl>
+    <PackageIcon>C64Renum_128.png</PackageIcon>
+    <PackageTags>Commodore;C64;renumber;refactor;BASIC</PackageTags>
+    <PackageReleaseNotes>Added Refactor mode</PackageReleaseNotes>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="BasicRenumberer_old.cs" />
+    <Compile Remove="CenterWinDialog.cs" />
     <Compile Remove="CodeConverter.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <None Remove="C64_Pro_Mono-STYLE.ttf" />
+    <None Remove="Instructions.txt" />
+    <None Remove="RefactorWindow.cs.bak_20260930002014" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +39,20 @@
 
   <ItemGroup>
     <EmbeddedResource Include="C64_Pro_Mono-STYLE.ttf" />
+    <EmbeddedResource Include="Instructions.txt">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -43,6 +72,13 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="C64Renum_128.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

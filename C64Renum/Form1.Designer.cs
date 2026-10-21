@@ -33,22 +33,27 @@
             btProcess = new Button();
             btCancel = new Button();
             toolTip1 = new ToolTip(components);
+            lbMode = new Label();
             menuStrip1 = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
             openToolStripMenuItem = new ToolStripMenuItem();
             settingsToolStripMenuItem = new ToolStripMenuItem();
             exitToolStripMenuItem = new ToolStripMenuItem();
+            toolStripMenuItem1 = new ToolStripMenuItem();
+            renumberToolStripMenuItem = new ToolStripMenuItem();
+            refactorToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem1 = new ToolStripMenuItem();
+            c64TokensToolStripMenuItem = new ToolStripMenuItem();
             label1 = new Label();
             tbOutputFile = new TextBox();
             btOutputFile = new Button();
             label2 = new Label();
             lbInputFile = new Label();
             rtb = new RichTextBox();
-            label3 = new Label();
+            lbStart = new Label();
             tbStart = new TextBox();
-            label4 = new Label();
+            lbStep = new Label();
             tbStep = new TextBox();
             menuStrip1.SuspendLayout();
             SuspendLayout();
@@ -84,9 +89,22 @@
             btCancel.UseVisualStyleBackColor = true;
             btCancel.Click += btCancel_Click;
             // 
+            // lbMode
+            // 
+            lbMode.AutoSize = true;
+            lbMode.BackColor = SystemColors.ButtonHighlight;
+            lbMode.Font = new Font("Segoe UI Semibold", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            lbMode.Location = new Point(750, 34);
+            lbMode.Name = "lbMode";
+            lbMode.Size = new Size(101, 17);
+            lbMode.TabIndex = 14;
+            lbMode.Text = "Mode Indicator";
+            toolTip1.SetToolTip(lbMode, "Double click to switch modes");
+            lbMode.DoubleClick += lbMode_DoubleClick;
+            // 
             // menuStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, aboutToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, toolStripMenuItem1, aboutToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(973, 24);
@@ -103,27 +121,48 @@
             // openToolStripMenuItem
             // 
             openToolStripMenuItem.Name = "openToolStripMenuItem";
-            openToolStripMenuItem.Size = new Size(116, 22);
+            openToolStripMenuItem.Size = new Size(180, 22);
             openToolStripMenuItem.Text = "&Open";
             openToolStripMenuItem.Click += btInputFile_Click;
             // 
             // settingsToolStripMenuItem
             // 
             settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
-            settingsToolStripMenuItem.Size = new Size(116, 22);
+            settingsToolStripMenuItem.Size = new Size(180, 22);
             settingsToolStripMenuItem.Text = "&Settings";
             settingsToolStripMenuItem.Click += settingsToolStripMenuItem_Click;
             // 
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(116, 22);
+            exitToolStripMenuItem.Size = new Size(180, 22);
             exitToolStripMenuItem.Text = "E&xit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
+            // toolStripMenuItem1
+            // 
+            toolStripMenuItem1.DropDownItems.AddRange(new ToolStripItem[] { renumberToolStripMenuItem, refactorToolStripMenuItem });
+            toolStripMenuItem1.Name = "toolStripMenuItem1";
+            toolStripMenuItem1.Size = new Size(50, 20);
+            toolStripMenuItem1.Text = "&Mode";
+            // 
+            // renumberToolStripMenuItem
+            // 
+            renumberToolStripMenuItem.Name = "renumberToolStripMenuItem";
+            renumberToolStripMenuItem.Size = new Size(180, 22);
+            renumberToolStripMenuItem.Text = "&Renumber";
+            renumberToolStripMenuItem.Click += renumberToolStripMenuItem_Click;
+            // 
+            // refactorToolStripMenuItem
+            // 
+            refactorToolStripMenuItem.Name = "refactorToolStripMenuItem";
+            refactorToolStripMenuItem.Size = new Size(180, 22);
+            refactorToolStripMenuItem.Text = "Re&factor";
+            refactorToolStripMenuItem.Click += refactorToolStripMenuItem_Click;
+            // 
             // aboutToolStripMenuItem
             // 
-            aboutToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { aboutToolStripMenuItem1 });
+            aboutToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { aboutToolStripMenuItem1, c64TokensToolStripMenuItem });
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
             aboutToolStripMenuItem.Size = new Size(44, 20);
             aboutToolStripMenuItem.Text = "&Help";
@@ -131,18 +170,25 @@
             // aboutToolStripMenuItem1
             // 
             aboutToolStripMenuItem1.Name = "aboutToolStripMenuItem1";
-            aboutToolStripMenuItem1.Size = new Size(107, 22);
+            aboutToolStripMenuItem1.Size = new Size(134, 22);
             aboutToolStripMenuItem1.Text = "&About";
             aboutToolStripMenuItem1.Click += aboutToolStripMenuItem1_Click;
+            // 
+            // c64TokensToolStripMenuItem
+            // 
+            c64TokensToolStripMenuItem.Name = "c64TokensToolStripMenuItem";
+            c64TokensToolStripMenuItem.Size = new Size(134, 22);
+            c64TokensToolStripMenuItem.Text = "C64 &Tokens";
+            c64TokensToolStripMenuItem.Click += c64TokensToolStripMenuItem_Click;
             // 
             // label1
             // 
             label1.AutoSize = true;
             label1.Location = new Point(51, 30);
             label1.Name = "label1";
-            label1.Size = new Size(56, 15);
+            label1.Size = new Size(86, 15);
             label1.TabIndex = 10;
-            label1.Text = "Input File";
+            label1.Text = "Input Filename";
             // 
             // tbOutputFile
             // 
@@ -168,9 +214,9 @@
             label2.AutoSize = true;
             label2.Location = new Point(51, 89);
             label2.Name = "label2";
-            label2.Size = new Size(62, 15);
+            label2.Size = new Size(92, 15);
             label2.TabIndex = 11;
-            label2.Text = "Ouput File";
+            label2.Text = "Ouput Filename";
             // 
             // lbInputFile
             // 
@@ -179,7 +225,6 @@
             lbInputFile.Name = "lbInputFile";
             lbInputFile.Size = new Size(623, 23);
             lbInputFile.TabIndex = 1;
-            lbInputFile.Text = "InputFile";
             lbInputFile.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // rtb
@@ -195,14 +240,14 @@
             rtb.Text = "";
             rtb.WordWrap = false;
             // 
-            // label3
+            // lbStart
             // 
-            label3.AutoSize = true;
-            label3.Location = new Point(713, 60);
-            label3.Name = "label3";
-            label3.Size = new Size(31, 15);
-            label3.TabIndex = 12;
-            label3.Text = "Start";
+            lbStart.AutoSize = true;
+            lbStart.Location = new Point(713, 60);
+            lbStart.Name = "lbStart";
+            lbStart.Size = new Size(31, 15);
+            lbStart.TabIndex = 12;
+            lbStart.Text = "Start";
             // 
             // tbStart
             // 
@@ -210,19 +255,18 @@
             tbStart.Name = "tbStart";
             tbStart.Size = new Size(67, 23);
             tbStart.TabIndex = 4;
-            tbStart.Text = "100";
             tbStart.TextAlign = HorizontalAlignment.Right;
-            tbStart.TextChanged += tbStartStop_TextChanged;
-            tbStart.KeyDown += tbStartStop_KeyDown;
+            tbStart.TextChanged += tbStartStep_TextChanged;
+            tbStart.KeyDown += tbStartStep_KeyDown;
             // 
-            // label4
+            // lbStep
             // 
-            label4.AutoSize = true;
-            label4.Location = new Point(854, 60);
-            label4.Name = "label4";
-            label4.Size = new Size(30, 15);
-            label4.TabIndex = 13;
-            label4.Text = "Step";
+            lbStep.AutoSize = true;
+            lbStep.Location = new Point(854, 60);
+            lbStep.Name = "lbStep";
+            lbStep.Size = new Size(30, 15);
+            lbStep.TabIndex = 13;
+            lbStep.Text = "Step";
             // 
             // tbStep
             // 
@@ -230,20 +274,20 @@
             tbStep.Name = "tbStep";
             tbStep.Size = new Size(67, 23);
             tbStep.TabIndex = 5;
-            tbStep.Text = "10";
             tbStep.TextAlign = HorizontalAlignment.Right;
-            tbStep.TextChanged += tbStartStop_TextChanged;
-            tbStep.KeyDown += tbStartStop_KeyDown;
+            tbStep.TextChanged += tbStartStep_TextChanged;
+            tbStep.KeyDown += tbStartStep_KeyDown;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(973, 625);
-            Controls.Add(label4);
+            Controls.Add(lbMode);
+            Controls.Add(lbStep);
             Controls.Add(tbStep);
             Controls.Add(tbStart);
-            Controls.Add(label3);
+            Controls.Add(lbStart);
             Controls.Add(rtb);
             Controls.Add(lbInputFile);
             Controls.Add(label2);
@@ -259,6 +303,7 @@
             StartPosition = FormStartPosition.CenterScreen;
             Text = "C64Renum";
             Load += Form1_Load;
+            KeyDown += Form1_KeyDown;
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
             ResumeLayout(false);
@@ -282,10 +327,15 @@
         private Label label2;
         private Label lbInputFile;
         internal RichTextBox rtb;
-        private Label label3;
+        private Label lbStart;
         private TextBox tbStart;
-        private Label label4;
+        private Label lbStep;
         private TextBox tbStep;
         private ToolStripMenuItem aboutToolStripMenuItem1;
+        private ToolStripMenuItem toolStripMenuItem1;
+        private ToolStripMenuItem renumberToolStripMenuItem;
+        private ToolStripMenuItem refactorToolStripMenuItem;
+        private Label lbMode;
+        private ToolStripMenuItem c64TokensToolStripMenuItem;
     }
 }

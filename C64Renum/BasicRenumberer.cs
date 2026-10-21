@@ -1,6 +1,6 @@
 ﻿/*
-C64Renum C64 Basic program renumbering utility
-© Steven J. Stover, 2026
+C64Renum C64 Basic program renumber/refactor utility
+© 2026 Steven J. Stover
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU Affero General Public License as published by the Free Software Foundation, either version 3 
@@ -24,17 +24,18 @@ namespace C64Renum
     internal static class BasicRenumberer
     {
         private static readonly int lineLength = 40; // maximum line length for display in the form
-        private static string? badLine;
+        private static string badLine = "";
+        private static int myMaxLineLength;
 
         internal class RenumberResult
         {
             /// <summary>
-            /// End address (>=0) on success; -1 on error.
+            /// End address (>=0) on success; -1 to -3 on error.
             /// </summary>
             public int Addr { get; set; }
 
             /// <summary>
-            /// Optional error message when Addr == -1.
+            /// Optional error message when Addr == -1 to -3.
             /// </summary>
             public string? Message { get; set; }
 
@@ -57,15 +58,6 @@ namespace C64Renum
             public List<Chunk>? Chunks { get; set; }
         }
 
-        private class Tokens
-        {
-            public static string[] Tk =[ "END", "FOR", "NEXT", "DATA", "INPUT#", "INPUT", "DIM", "READ", "LET", "GOTO", "RUN", "IF",
-                "RESTORE", "GOSUB", "RETURN", "REM", "STOP", "ON", "WAIT", "LOAD", "SAVE", "VERIFY", "DEF", "POKE", "PRINT#", "PRINT", "CONT",
-                "LIST", "CLR", "CMD", "SYS", "OPEN", "CLOSE", "GET", "NEW", "TAB(", "TO", "FN", "SPC(", "THEN", "NOT", "STEP", "+", "−", "*",
-                "/", "↑", "AND", "OR", ">", "=", "<", "SGN", "INT", "ABS", "USR", "FRE", "POS", "SQR", "RND", "LOG", "EXP", "COS", "SIN", "TAN",
-                "ATN", "PEEK", "LEN", "STR$", "VAL", "ASC", "CHR$", "LEFT$", "RIGHT$", "MID$", "GO" ]; //  "π" = 0xFF (special case)
-        }
-
         private static Form1? myForm;
 
         // renumber BASIC in provided memory array byte[]
@@ -77,6 +69,7 @@ namespace C64Renum
             {
                 token.ThrowIfCancellationRequested();
                 myForm = form;
+                myMaxLineLength = myForm.optMaxLineLength;
                 Dictionary<string, int> lineNoTable = [];
                 List<Line> lines = [];
                 int maxLineNo = 63999;
@@ -170,15 +163,17 @@ namespace C64Renum
                                 case 0x22: // quote (read up to next quote)
                                     if (addr < maxMem)
                                     {
-                                        byte c = mem[addr++];
-                                        while (c != 0)
+                                        b = mem[addr++];
+                                        while (b != 0)
                                         {
                                             token.ThrowIfCancellationRequested();
-                                            blob.Add(c);
-                                            if (c == 0x22) break;
+                                            blob.Add(b);
+                                            if (b == 0x22) break;
                                             if (addr >= maxMem) break;
-                                            c = mem[addr++];
+                                            b = mem[addr++];
                                         }
+                                        if (b == 0) addr--;
+                                        break;
                                     }
                                     break;
                                 case 0x89: // GOTO
@@ -208,97 +203,30 @@ namespace C64Renum
                     }
                 }
 
-            /////////////////////////////////////////////////////////////////////////////////
-            // Reassemble (local function inside RenumberBasicAsync, uses outer variables) //
-            /////////////////////////////////////////////////////////////////////////////////
-            async Task<int> ReassembleAsync()
+                //////////////////////////////////////////////////////////////////////////////////////
+                // ReassembleAsync (local function inside RenumberBasicAsync, uses outer variables) //
+                //////////////////////////////////////////////////////////////////////////////////////
+                async Task<int> ReassembleAsync()
                 {
-                    token.ThrowIfCancellationRequested();
-                    int cOut; // character count for line wrapping
-
-                    string PrtBlob(List<byte> chunkBlob)
+                    void AppendRTB(string p)
                     {
-                        void AddNL(ref List<char> pChars)
+                        if (form.rtb.InvokeRequired)
                         {
-                            cOut++;
-                            if (myForm!.optWrap && (cOut >= lineLength))
-                            {
-                                pChars.Add('\n');
-                                cOut = 0;
-                            }
+                            form.rtb.Invoke(new Action(() =>
+                            { form.rtb.AppendText(p + Environment.NewLine); }));
                         }
-
-                        List<char> printableChars = [];
-                        bool inQuote = false;
-                        foreach (byte b in chunkBlob)
-                        {
-                            token.ThrowIfCancellationRequested();
-                            // Handle case for string inside quotes, which can contain any byte value,
-                            // including tokens and non-printable characters.
-                            if (b == 0x22) // quote character
-                            {
-                                inQuote = !inQuote;
-                                printableChars.Add((char)b);
-                                AddNL(ref printableChars);
-                                continue;
-                            }
-                            if (inQuote)
-                            {
-                                if (b < 0x20) // special case for control characters inside quotes
-                                {
-                                    printableChars.Add((char)(b + 0xEE80));
-                                    AddNL(ref printableChars);
-                                    continue;
-                                }
-                                if (b > 0x7F) // Control characters above 0x7F inside quotes
-                                {
-                                    printableChars.Add((char)(b + 0xEE40));
-                                    AddNL(ref printableChars);
-                                    continue;
-                                }
-                                printableChars.Add((char)b);
-                                AddNL(ref printableChars);
-                                continue;
-                            }
-
-                            if (b >= 0x20 && b <= 0x7F) // printable ASCII range
-                            {
-                                printableChars.Add((char)b);
-                                AddNL(ref printableChars);
-                            }
-                            else
-                            {
-                                string tkn;
-                                if ((b >= 0x80 && b <= 0xCB) || b == 0xFF) // Token range
-                                {
-                                    if (b == 0xFF) { tkn = "π"; }
-                                    else { tkn = Tokens.Tk[b - 0x80]; }
-
-                                    for (int i = 0; i < tkn.Length; i++)
-                                    {
-                                        printableChars.Add(tkn[i]);
-                                        AddNL(ref printableChars);
-                                    }
-                                    continue;
-                                }
-                                else // Non-printable character
-                                {
-                                    printableChars.Add('?');
-                                    AddNL(ref printableChars);
-                                }
-                            }
-                        }
-                        return new string([.. printableChars]);
+                        else
+                        { form.rtb.AppendText(p  + Environment.NewLine); }
                     }
 
-                    ///////////////////////////////////
-                    // Reassemble method starts here //
-                    ///////////////////////////////////
                     token.ThrowIfCancellationRequested();
+                    int cOut; // character count for line wrapping
                     Line currLine;
                     int linkAddr;
                     int mLink;
                     string pString;
+                    string lineNoStr;
+                    PRB _PRB = new(myForm!, token);
 
                     for (int i = 0, max = lines.Count; i < max; i++)
                     {
@@ -316,7 +244,7 @@ namespace C64Renum
                         bytes.Add((byte)(currNo & 0xFF));
                         bytes.Add((byte)((currNo >> 8) & 0xFF));
                         // add the new line number to the printable string for display in the form
-                        string lineNoStr = currNo.ToString() + " ";
+                        lineNoStr = currNo.ToString() + " ";
                         foreach (char c in lineNoStr)
                         {
                             token.ThrowIfCancellationRequested();
@@ -331,7 +259,7 @@ namespace C64Renum
                         // transfer chunks to memory
                         if (currLine.Chunks is null)
                         {
-                            badLine = currLine.Ln;
+                            badLine = currNo.ToString();
                             return -3; // Chunks list is null in line {currLine.Ln}
                         }
                         for (int j = 0; j < currLine.Chunks.Count; j++)
@@ -345,7 +273,7 @@ namespace C64Renum
                                 {
                                     bytes.AddRange(chunkBlob);
                                     // add the blob to the printable string for display in the form
-                                    pString += PrtBlob(chunkBlob);
+                                    pString += _PRB.PrtBlob(chunkBlob, lineLength, ref cOut);
                                 }
                             }
                             else if (chunk.Type == "target")
@@ -380,33 +308,41 @@ namespace C64Renum
                                 }
                             }
                         }
+
+                        // --- BEGIN LINE LIMIT CODE CHECK ---
+                        // 1. Character Check: Count raw text characters excluding display-only formatting newlines
+                        int totalCharacters = pString.Replace("\n", "").Length;
+                        if (totalCharacters > myMaxLineLength)
+                        {
+                            badLine = currNo.ToString();
+                            return -4; // Code -4: Character limit exceeded
+                        }
+
+                        // 2. Byte Check: Measure the line's memory footprint
+                        // Standard overhead: 2 bytes (link) + 2 bytes (line number) + 1 byte (trailing zero) = 5 bytes
+                        int totalLineBytes = bytes.Count - linkAddr + 1; // +1 accounts for the trailing EOL zero byte
+                        if (totalLineBytes > myMaxLineLength + 5)
+                        {
+                            badLine = currNo.ToString();
+                            return -5; // Code -5: Byte limit exceeded
+                        }
+                        // --- END LINE LIMIT CODE CHECK ---
+
                         bytes.Add(0); // EOL
-                        if (form.rtb.InvokeRequired)
-                        {
-                            form.rtb.Invoke(new Action(() =>
-                            {
-                                form.rtb.AppendText(pString + Environment.NewLine);
-                            }));
-                        }
-                        else
-                        {
-                            form.rtb.AppendText(pString + Environment.NewLine);
-                        }
+                        AppendRTB(pString);
                         // fix up the line link
                         mLink = bytes.Count + mStart;
                         bytes[linkAddr] = (byte)(mLink & 0xFF);
                         bytes[linkAddr + 1] = (byte)((mLink >> 8) & 0xFF);
 
-                        if (form.optDemo)
-                        {
-                            await Task.Delay(form.optDemoSpeed * 250); // Delay for demonstration purposes
-
-                        }                    }
+                        if (form.optDemo) // Delay for demonstration purposes
+                        { await Task.Delay(form.optDemoSpeed * 250); }
+                    }
                     // end of code (empty line link)
+                    AppendRTB("---- End of BASIC Program ----");
                     bytes.AddRange([0, 0]);
                     return bytes.Count;
                 }
-
 
                 ///////////////////////////////
                 // Main function starts here //
@@ -416,17 +352,13 @@ namespace C64Renum
                 if (form.rtb.InvokeRequired)
                 {
                     form.rtb.Invoke(new Action(() =>
-                    {
-                        form.rtb.Clear();
-                    }));
+                    { form.rtb.Clear(); }));
                 }
                 else
-                {
-                    form.rtb.Clear();
-                }
+                { form.rtb.Clear(); }
 
                 ParseSplit();
-                // check if we are still in the range of legal line numbers
+                // Check if we are still in the range of legal line numbers
                 if (lines.Count > 0)
                 {
                     string? lastLineNo = lines[^1].Ln;
@@ -437,22 +369,28 @@ namespace C64Renum
                             return new RenumberResult
                             {
                                 Addr = -1,
-                                Message = "Out of range. Top line number is " + topLineNo +
-                                          " (" + maxLineNo + " allowed)."
+                                Message = $"Out of range. Top line number is {topLineNo} ({maxLineNo} allowed).",
+                                Mem = null
                             };
                         }
                     }
                 }
 
                 bytes.AddRange(mem[0], mem[1]);
-                string msg = string.Empty;
                 int endAddr = await ReassembleAsync();
-                if (endAddr == -2) { msg = "Line number is null or not found in line number table."; }
-                if (endAddr == -3) { msg = $"Chunks list is null in line {badLine}."; }
+                string msg = endAddr switch
+                {
+                    -2 => "Line number is null or not found in line number table.",
+                    -3 => $"Chunks list is null in line {badLine}.",
+                    -4 => $"Line {badLine} exceeds the maximum text length of {myMaxLineLength} characters.",
+                    -5 => $"Line {badLine} layout demands more bytes than the allowed memory ceiling.",
+                    _ => string.Empty // The default case (covers success codes > 0)
+                };
+
                 return new RenumberResult
                 {
                     Addr = endAddr,
-                    Mem = [.. bytes],
+                    Mem = endAddr > 0 ? [.. bytes] : null,
                     Message = msg
                 };
             }, token);

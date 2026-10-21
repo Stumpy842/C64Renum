@@ -1,6 +1,6 @@
 ﻿/*
-C64Renum C64 Basic program renumbering utility
-© Steven J. Stover, 2026
+C64Renum C64 Basic program renumber/refactor utility
+© 2026 Steven J. Stover
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU Affero General Public License as published by the Free Software Foundation, either version 3 
@@ -28,7 +28,8 @@ namespace C64Renum
     public partial class SettingsWindow : Form
     {
         private static readonly string title = Form1.AppName + " Settings";
-        public SettingsWindow(bool Show = true)
+        internal Form1 form;
+        public SettingsWindow(Form1 Iform, bool Show = true)
         {
             InitializeComponent();
             if (Show)
@@ -38,11 +39,15 @@ namespace C64Renum
                 Settings.Init(this);
                 Settings.Load();
             }
+            form = Iform;
         }
 
-        private static bool GetFolder(string desc, ref string path, bool inp = true)
+        private bool GetFolder(string desc, out string path, bool inp = true)
         {
-            path = inp ? Settings.CurrentSettings.InputFilePath : Settings.CurrentSettings.OutputFilePath;
+            path = inp
+                ? (tbInputFolder.Text != "" ? tbInputFolder.Text : Settings.CurrentSettings.InputFilePath)
+                : (tbOutputFolder.Text != "" ? tbOutputFolder.Text : Settings.CurrentSettings.OutputFilePath);
+
             if (!Directory.Exists(path)) { path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments); }
             using FolderBrowserDialog fbd = new()
             {
@@ -55,23 +60,43 @@ namespace C64Renum
             return false;
         }
 
-        private void btInputFolder_Click(object sender, EventArgs e)
+        private void GetAFolder(bool In = true)
         {
-            string retpath = "";
-            if (GetFolder("Select Input Folder", ref retpath))
-            { tbInputFolder.Text = retpath; }
+            string fld = In ? "Input" : "Output";
+            if (GetFolder($"Select {fld} Folder", out string retpath, In))
+            {
+                    if (In) { tbInputFolder.Text = retpath; }
+                    else { tbOutputFolder.Text = retpath; }
+            }
         }
 
-        private void btOutputFolder_Click(object sender, EventArgs e)
+        private void btFolder_Click(object sender, EventArgs e)
         {
-            string retpath = "";
-            if (GetFolder("Select Output Folder", ref retpath, false))
-            { tbOutputFolder.Text = retpath; }
+            bool isIn = sender == btInputFolder;
+            GetAFolder(isIn);
         }
 
+        private void tbInputFolder_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                this.BeginInvoke(new Action(() => { GetAFolder(); }));
+            }
+        }
+
+        private void tbOutputFolder_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                this.BeginInvoke(new Action(() => { GetAFolder(false); }));
+            }
+        }
+        
         private void SaveIt()
         {
-            Settings.Save();
+            Settings.Save(form);
             DialogResult = DialogResult.OK;
             Close();
         }
@@ -82,11 +107,6 @@ namespace C64Renum
 
         private void SettingsWindow_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Enter)
-            {
-                e.SuppressKeyPress = true;
-                SaveIt();
-            }
             if (e.KeyCode == Keys.Escape)
             {
                 DialogResult = DialogResult.Cancel;
@@ -162,6 +182,11 @@ namespace C64Renum
             {
                 BColor(); return true;
             }
+            if (keyData == (Keys.Alt | Keys.X))
+            {
+                nudMaxVarLength.Focus(); return true;
+            }
+
             return base.ProcessCmdKey(ref msg, keyData);
         }
 

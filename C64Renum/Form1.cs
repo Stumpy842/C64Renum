@@ -1,6 +1,6 @@
 ﻿/*
-C64Renum C64 Basic program renumbering utility
-© Steven J. Stover, 2026
+C64Renum C64 Basic program renumber/refactor utility
+© 2026 Steven J. Stover
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU Affero General Public License as published by the Free Software Foundation, either version 3 
@@ -22,6 +22,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Drawing.Imaging;
 
 namespace C64Renum
 {
@@ -32,21 +33,37 @@ namespace C64Renum
         internal static string myPath = Application.StartupPath;
         internal static string AppName = Assembly.GetEntryAssembly()!.GetName().Name!;
         internal static string AppVersion = Assembly.GetEntryAssembly()!.GetName().Version!.ToString();
-        private string inFile = string.Empty;
-        private string outFile = string.Empty;
+        internal string inFile = string.Empty;
+        internal string outFile = string.Empty;
         private int start;
         private int step;
-        private readonly int wTime = 10;
+        internal readonly int wTime = 10;
+        internal bool _processing = false;
+        internal bool _refproc = false;
+        //internal PRB _PRB;
 
         // Settings variables
         private string optInFilePath = string.Empty;
         private string optOutFilePath = string.Empty;
         private bool optOutUseInputFolder;
         private bool optDeleteOnCancel;
-        private bool optNoPromptOverwrite;
+        internal bool optNoPromptOverwrite;
         internal bool optWrap;
         internal bool optDemo;
         internal int optDemoSpeed;
+        internal bool optCloseOnEsc;
+        internal bool optClearOnInvalid;
+        internal int optMaxVarLength;
+        internal bool optEnableWarnings;
+        public Mode optMode;
+        internal bool optCloseRefOnEsc;
+        internal int optMaxLineLength;
+        internal bool optOverwriteOnTrim;
+        internal int optStartLineNo;
+        internal int optStepIncNo;
+        internal bool optClrOutFilePath;
+
+        public enum Mode { Renumber, Refactor }
 
         // C64 Pro Mono font
         // Keep the PrivateFontCollection alive for the lifetime of the form
@@ -92,10 +109,12 @@ namespace C64Renum
         {
             InitializeComponent();
             this.Icon = Properties.Resources.C64Renum;
+            //_PRB = new PRB(this, CancellationToken.None);
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            this.KeyPreview = true;
             LoadFontFromResource();
             this.Text = $"{AppName} v{AppVersion}";
             btInputFile.Enabled = true;
@@ -108,7 +127,7 @@ namespace C64Renum
             rtb.HideSelection = false;
             SetSelectionLineSpacing(4, 280); // Adjust line height of RichTextBox rtb for better readability
             rtb.Clear();
-            DisplayC64Characters();
+            Tokens.DisplayC64Characters(rtb);
         }
 
         private void LoadFontFromResource()
@@ -147,28 +166,6 @@ namespace C64Renum
             c64Font = new Font(pfc.Families[0], 12, FontStyle.Regular);
         }
 
-        private void DisplayC64Characters()
-        {
-            // Print Standard ASCII Range
-            rtb.AppendText("--- Standard ASCII Range ---\n");
-            for (int i = 0x20; i <= 0x7E; i++)
-            {
-                rtb.AppendText(((char)i).ToString());
-                if ((i - 0x20 + 1) % 32 == 0) rtb.AppendText("\n");
-            }
-            rtb.AppendText("\n\n");
-
-            // Print C64 PETSCII Mapping (Private Use Area)
-            rtb.AppendText("--- C64 PETSCII Mapping (Private Use Area) ---\n");
-            int count = 0;
-            for (int i = 0xE000; i <= 0xE1FF; i++)
-            {
-                rtb.AppendText(((char)i).ToString());
-                count++;
-                if (count % 32 == 0) rtb.AppendText("\n");
-            }
-        }
-
         // Required P/Invoke declaration for memory font registration
         [DllImport("gdi32.dll")]
         private static extern IntPtr AddFontMemResourceEx(IntPtr pbFont, uint cbFont, IntPtr pdv, [In] ref uint pcFonts);
@@ -176,7 +173,9 @@ namespace C64Renum
         // Clean up font collection when form closes
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            Settings.Save(this);
             base.OnFormClosing(e);
+            _reCts?.Dispose();
             c64Font?.Dispose();
             pfc?.Dispose();
         }
@@ -190,7 +189,6 @@ namespace C64Renum
             format.bLineSpacingRule = bLineSpacingRule;
             SendMessage(rtb.Handle, EM_SETPARAFORMAT, SCF_SELECTION, ref format);
         }
-
 
         private void LoadSettings()
         {
@@ -206,6 +204,42 @@ namespace C64Renum
             optWrap = Settings.CurrentSettings.WrapText;
             optDemo = Settings.CurrentSettings.DemoMode;
             optDemoSpeed = Settings.CurrentSettings.DemoSpeed;
+            optMode = Settings.CurrentSettings.rMode;
+            optCloseOnEsc = Settings.CurrentSettings.CloseOnEscape;
+            optClearOnInvalid = Settings.CurrentSettings.ClearOnInvalid;
+            optMaxVarLength = Settings.CurrentSettings.MaxVarLength;
+            optEnableWarnings = Settings.CurrentSettings.EnableWarnings;
+            optCloseRefOnEsc = Settings.CurrentSettings.CloseRefOnEsc;
+            optMaxLineLength = (int)Settings.CurrentSettings.LineLength;
+            optOverwriteOnTrim = Settings.CurrentSettings.OverwriteOnTrim;
+            optStartLineNo = Settings.CurrentSettings.StartLineNo;
+            optStepIncNo = Settings.CurrentSettings.StepIncNo;
+            tbStart.Text = optStartLineNo.ToString();
+            tbStep.Text = optStepIncNo.ToString();
+            optClrOutFilePath = Settings.CurrentSettings.ClrOutFilePath;
+
+            ckMode();
+        }
+
+        private void ckMode()
+        {
+            renumberToolStripMenuItem.Checked = optMode == Mode.Renumber;
+            refactorToolStripMenuItem.Checked = optMode == Mode.Refactor;
+            SwapUI();
+        }
+
+        private void SwapUI()
+        {
+            bool r = optMode == Mode.Renumber;
+            lbStart.Visible = r;
+            tbStart.Visible = r;
+            lbStep.Visible = r;
+            tbStep.Visible = r;
+            btProcess.Text = r ? "Process" : "Scan";
+            lbMode.Text = optMode == Mode.Renumber ? "Renumber Mode" : "Refactor Mode";
+            tbOutputFile.Text = "";
+            GetOutfileName(out _);
+            CkProcess();
         }
 
         private bool GetFilename(ref string fname, bool inp = true)
@@ -237,16 +271,16 @@ namespace C64Renum
 
         private void btInputFile_Click(object sender, EventArgs e)
         {
+            tbOutputFile.Text = "";
             if (GetFilename(ref inFile))
             {
                 lbInputFile.Text = inFile;
-                GetOutfileName();
+                GetOutfileName(out _);
                 if (CkProcess()) { ActiveControl = btProcess; }
             }
             else
             {
                 lbInputFile.Text = string.Empty;
-                tbOutputFile.Text = string.Empty;
                 btProcess.Enabled = false;
             }
         }
@@ -264,29 +298,77 @@ namespace C64Renum
             }
         }
 
-        private void GetOutfileName()
+        private bool GetOutfileName(out string err)
         {
-            if (!string.IsNullOrEmpty(inFile))
+            err = string.Empty;
+            bool ret = false;
+            if (!string.IsNullOrWhiteSpace(inFile))
             {
-                string folder = optOutUseInputFolder ? Path.GetDirectoryName(inFile)! : optOutFilePath;
-                string name = Path.GetFileNameWithoutExtension(inFile) + "-renum.prg";
-                outFile = Path.Combine(folder, name);
-                tbOutputFile.Text = outFile;
+                try
+                {
+                    string folder = optOutUseInputFolder ? Path.GetDirectoryName(inFile)! : optOutFilePath;
+                    string name = Path.GetFileName(tbOutputFile.Text);
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        name = Path.GetFileNameWithoutExtension(inFile) +
+                            (optMode == Mode.Renumber ? "-renum.prg" : "-refact.prg");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            folder = Path.GetDirectoryName(tbOutputFile.Text)!;
+                        }
+                        catch (Exception ex)
+                        {
+                            Tools.TimedMessage($"Error: {ex.Message}", "Error", this, MessageBoxIcon.Error, wTime);
+                            // Just leave folder as-is
+                        }
+                    }
+
+                    string path = Path.Combine(folder, name);
+                    if (FileValidation.IsValidFullPath(path, out err))
+                    {
+                        outFile = path;
+                        tbOutputFile.Text = path;
+                        ret = true;
+                    }
+                    else
+                    {
+                        if (optClrOutFilePath)
+                        {
+                            outFile = string.Empty;
+                            tbOutputFile.Text = string.Empty;
+                        }
+                        ret = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (optClrOutFilePath)
+                    {
+                        outFile = string.Empty;
+                        tbOutputFile.Text = string.Empty;
+                    }
+                    else { Tools.TimedMessage(ex.Message, "Error", this, MessageBoxIcon.Error, wTime); }
+                    ret = false;
+                }
             }
             else
             {
                 outFile = string.Empty;
                 tbOutputFile.Text = string.Empty;
+                ret = false;
             }
+            return ret;
         }
 
         private void ShowSettingsWindow(bool Show = true)
         {
-            using SettingsWindow settingsWindow = new(Show) { KeyPreview = true };
+            using SettingsWindow settingsWindow = new(this, Show) { KeyPreview = true };
             if (settingsWindow.ShowDialog(this) == DialogResult.OK)
             {
                 LoadSettings();
-                GetOutfileName();
             }
         }
 
@@ -302,19 +384,33 @@ namespace C64Renum
 
         private void tbOutputFile_TextChanged(object sender, EventArgs e)
         {
-            btProcess.Enabled = CkProcess();
+            CkProcess(false, false);
         }
 
-        private bool CkProcess(bool can = false)
+        internal void EndProc(bool can = false)
         {
-            btProcess.Enabled = !string.IsNullOrEmpty(tbOutputFile.Text) && !string.IsNullOrEmpty(lbInputFile.Text)
-                && StartStepOk() && (lbInputFile.Text != tbOutputFile.Text);
-            if (can) { btCancel.Enabled = false; }
-            return btProcess.Enabled;
+            _processing = _refproc;
+            CkProcess(can);
+        }
+
+        private bool CkProcess(bool can = false, bool focusProc = true)
+        {
+            bool allGood = !string.IsNullOrEmpty(tbOutputFile.Text) && !string.IsNullOrEmpty(lbInputFile.Text)
+                && StartStepOk() && (lbInputFile.Text != tbOutputFile.Text) && !_processing;
+            btCancel.Enabled = can;
+            btProcess.Enabled = allGood;
+            menuStrip1.Enabled = !_processing;
+            lbMode.Enabled = !_processing;
+            if (focusProc)
+            {
+                btProcess.Focus();
+            }
+            return allGood;
         }
 
         private bool StartStepOk()
         {
+            if (optMode == Mode.Refactor) return true;
             return int.TryParse(tbStart.Text, out start) && int.TryParse(tbStep.Text, out step) && step > 0;
         }
 
@@ -339,43 +435,54 @@ namespace C64Renum
             return true;
         }
 
-        private void tbStartStop_KeyDown(object sender, KeyEventArgs e)
+        private void tbStartStep_KeyDown(object sender, KeyEventArgs e)
         {
             ssKeydown(e);
         }
 
-        private void tbStartStop_TextChanged(object sender, EventArgs e)
+        private void tbStartStep_TextChanged(object sender, EventArgs e)
         {
-            CkProcess();
+            if (int.TryParse(tbStart.Text, out int StartLineNo)) optStartLineNo = StartLineNo;
+            if (int.TryParse(tbStep.Text, out int StepIncNo)) optStepIncNo = StepIncNo;
+            CkProcess(false, false);
         }
 
-        private CancellationTokenSource? _renumberCts;
+        private CancellationTokenSource? _reCts;
+        internal CancellationToken token;
 
         private async void btProcess_Click(object sender, EventArgs e)
         {
-            btProcess.Enabled = false;
-            btCancel.Enabled = true;
+            _processing = true;
+            CkProcess(true);
 
             if (!File.Exists(inFile))
             {
-                Tools.TimedMessage($"Input file {inFile} does not exist", "Error", this);
-                CkProcess(true);
+                Tools.TimedMessage($"Input file {inFile} does not exist", "Error", this, MessageBoxIcon.Error, wTime);
+                EndProc();
+                return;
+            }
+
+            if (!GetOutfileName(out string me))
+            {
+                Tools.TimedMessage(me, "Error", this, MessageBoxIcon.Error, wTime);
+                EndProc();
                 return;
             }
 
             if (inFile.Equals(outFile, StringComparison.OrdinalIgnoreCase))
             {
-                Tools.TimedMessage("Input and output files cannot be the same", "Error", this);
-                CkProcess(true);
+                Tools.TimedMessage("Input and output files cannot be the same", "Error", this, MessageBoxIcon.Error, wTime);
+                EndProc();
                 return;
             }
 
             if (File.Exists(outFile) && !optNoPromptOverwrite)
             {
-                DialogResult result = MessageBox.Show($"Output file {outFile} already exists. Overwrite?", "Confirm Overwrite", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                DialogResult result = MessageBox.Show($"Output file {outFile} already exists. Overwrite?",
+                    "Confirm Overwrite", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
                 if (result != DialogResult.Yes)
                 {
-                    CkProcess(true);
+                    EndProc();
                     return;
                 }
             }
@@ -387,14 +494,20 @@ namespace C64Renum
             }
             catch (Exception ex)
             {
-                Tools.TimedMessage($"Error reading input file {inFile}: {ex.Message}", "Error", this);
-                CkProcess(true);
+                Tools.TimedMessage($"Error reading input file {inFile}.\n{ex.Message}", "Error", this, MessageBoxIcon.Error, wTime);
+                EndProc();
                 return;
             }
 
-            _renumberCts?.Dispose();
-            _renumberCts = new CancellationTokenSource();
-            CancellationToken token = _renumberCts.Token;
+            _reCts?.Dispose();
+            _reCts = new CancellationTokenSource();
+            token = _reCts.Token;
+
+            if (optMode == Mode.Refactor)
+            {
+                GoRefactor(fileBytes);
+                return;
+            }
 
             try
             {
@@ -412,7 +525,7 @@ namespace C64Renum
                     }
                     catch (Exception ex)
                     {
-                        Tools.TimedMessage($"Error writing output file {outFile}: {ex.Message}", "Error", this,
+                        Tools.TimedMessage($"Error writing output file {outFile}.\n{ex.Message}", "Error", this,
                             MessageBoxIcon.Error, wTime);
                         TryDeleteOutfile();
                     }
@@ -426,7 +539,7 @@ namespace C64Renum
             }
             catch (OperationCanceledException)
             {
-                Tools.TimedMessage("Renumbering cancelled", "Info", this, MessageBoxIcon.Warning, wTime);
+                Tools.TimedMessage("Renumbering cancelled", "Info", this, MessageBoxIcon.Information, wTime);
                 TryDeleteOutfile();
             }
             catch (Exception ex)
@@ -436,14 +549,28 @@ namespace C64Renum
             }
             finally
             {
-                _renumberCts?.Dispose();
-                _renumberCts = null;
-                btCancel.Enabled = false;
-                CkProcess();
+                _reCts?.Dispose();
+                _reCts = null;
+                EndProc();
             }
         }
 
-        private void TryDeleteOutfile()
+        private void GoRefactor(byte[] fBytes)
+        {
+            using RefactorWindow refactorWindow = new(fBytes, this, _reCts!) { KeyPreview = true };
+            DialogResult grResult = refactorWindow.ShowDialog(this);
+            Settings.Load(); // Reload settings in case they were changed in the RefactorWindow
+            if (grResult == DialogResult.Abort)
+            {
+                _refproc = false;
+                _reCts?.Dispose();
+                _reCts = null;
+            }
+            EndProc(_refproc);
+            return;
+        }
+
+        internal void TryDeleteOutfile()
         {
             if (optDeleteOnCancel)
             {
@@ -456,7 +583,7 @@ namespace C64Renum
                 }
                 catch (Exception ex)
                 {
-                    Tools.TimedMessage($"Error deleting output file {outFile}: {ex.Message}", "Error", this,
+                    Tools.TimedMessage($"Error deleting output file {outFile}.\n{ex.Message}", "Error", this,
                         MessageBoxIcon.Error, wTime);
                 }
             }
@@ -470,12 +597,46 @@ namespace C64Renum
 
         private void btCancel_Click(object sender, EventArgs e)
         {
-            _renumberCts?.Cancel();
-            btCancel.Enabled = false;
-            CkProcess();
+            _reCts?.Cancel();
+            _refproc = false;
+            EndProc();
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int wParam, ref PARAFORMAT2 lParam);
+
+        private void renumberToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            optMode = Mode.Renumber;
+            ckMode();
+        }
+
+        private void refactorToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            optMode = Mode.Refactor;
+            ckMode();
+        }
+
+        private void lbMode_DoubleClick(object sender, EventArgs e)
+        {
+            optMode = optMode == Mode.Renumber ? Mode.Refactor : Mode.Renumber;
+            ckMode();
+        }
+
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (optCloseOnEsc && e.KeyCode == Keys.Escape)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                this.Close();
+            }
+        }
+
+        private void c64TokensToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using TokensHelp tkh = new();
+            tkh.ShowDialog();
+        }
     }
 }

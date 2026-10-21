@@ -32,8 +32,10 @@
             lbTitle = new Label();
             btOK = new Button();
             lbInfo = new Label();
-            lbWhat = new Label();
+            lbLicense = new Label();
             panel1 = new Panel();
+            lbPageLink = new Label();
+            lbDisclaimer = new Label();
             pbLogo = new PictureBox();
             panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbLogo).BeginInit();
@@ -43,7 +45,7 @@
             // 
             lbTitle.AutoSize = true;
             lbTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lbTitle.Location = new Point(73, 35);
+            lbTitle.Location = new Point(73, 15);
             lbTitle.Name = "lbTitle";
             lbTitle.Size = new Size(57, 21);
             lbTitle.TabIndex = 0;
@@ -52,7 +54,7 @@
             // 
             // btOK
             // 
-            btOK.Location = new Point(61, 204);
+            btOK.Location = new Point(59, 231);
             btOK.Name = "btOK";
             btOK.Size = new Size(80, 40);
             btOK.TabIndex = 1;
@@ -64,26 +66,28 @@
             // 
             lbInfo.AutoSize = true;
             lbInfo.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            lbInfo.Location = new Point(73, 76);
+            lbInfo.Location = new Point(73, 50);
             lbInfo.Name = "lbInfo";
             lbInfo.Size = new Size(43, 17);
             lbInfo.TabIndex = 2;
             lbInfo.Text = "label1";
             lbInfo.TextAlign = ContentAlignment.MiddleCenter;
             // 
-            // lbWhat
+            // lbLicense
             // 
-            lbWhat.AutoSize = true;
-            lbWhat.Location = new Point(73, 121);
-            lbWhat.Name = "lbWhat";
-            lbWhat.Size = new Size(38, 15);
-            lbWhat.TabIndex = 3;
-            lbWhat.Text = "label1";
+            lbLicense.AutoSize = true;
+            lbLicense.Location = new Point(73, 122);
+            lbLicense.Name = "lbLicense";
+            lbLicense.Size = new Size(38, 15);
+            lbLicense.TabIndex = 3;
+            lbLicense.Text = "label1";
             // 
             // panel1
             // 
+            panel1.Controls.Add(lbPageLink);
+            panel1.Controls.Add(lbDisclaimer);
             panel1.Controls.Add(btOK);
-            panel1.Controls.Add(lbWhat);
+            panel1.Controls.Add(lbLicense);
             panel1.Controls.Add(lbTitle);
             panel1.Controls.Add(lbInfo);
             panel1.Dock = DockStyle.Left;
@@ -91,6 +95,27 @@
             panel1.Name = "panel1";
             panel1.Size = new Size(412, 287);
             panel1.TabIndex = 4;
+            // 
+            // lbPageLink
+            // 
+            lbPageLink.AutoSize = true;
+            lbPageLink.Cursor = Cursors.Hand;
+            lbPageLink.ForeColor = SystemColors.HotTrack;
+            lbPageLink.Location = new Point(73, 95);
+            lbPageLink.Name = "lbPageLink";
+            lbPageLink.Size = new Size(38, 15);
+            lbPageLink.TabIndex = 5;
+            lbPageLink.Text = "label1";
+            lbPageLink.Click += lbPageLink_Click;
+            // 
+            // lbDisclaimer
+            // 
+            lbDisclaimer.AutoSize = true;
+            lbDisclaimer.Location = new Point(73, 190);
+            lbDisclaimer.Name = "lbDisclaimer";
+            lbDisclaimer.Size = new Size(38, 15);
+            lbDisclaimer.TabIndex = 4;
+            lbDisclaimer.Text = "label1";
             // 
             // pbLogo
             // 
@@ -129,8 +154,10 @@
         private Label lbTitle;
         private Button btOK;
         private Label lbInfo;
-        private Label lbWhat;
+        private Label lbLicense;
         private Panel panel1;
         private PictureBox pbLogo;
+        private Label lbDisclaimer;
+        private Label lbPageLink;
     }
 }
